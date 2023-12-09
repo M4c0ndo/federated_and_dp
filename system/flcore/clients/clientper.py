@@ -9,7 +9,7 @@ class clientPer(Client):
 
     def train(self):
         trainloader = self.load_train_data()
-        
+
         start_time = time.time()
 
         # self.model.to(self.device)
