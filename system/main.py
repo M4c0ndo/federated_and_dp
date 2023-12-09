@@ -1,20 +1,3 @@
-# PFLlib: Personalized Federated Learning Algorithm Library
-# Copyright (C) 2021  Jianqing Zhang
-
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
 #!/usr/bin/env python
 import copy
 import torch
@@ -25,51 +8,16 @@ import warnings
 import numpy as np
 import torchvision
 import logging
-
 from flcore.servers.serveravg import FedAvg
-from flcore.servers.serverpFedMe import pFedMe
 from flcore.servers.serverperavg import PerAvg
-from flcore.servers.serverprox import FedProx
-from flcore.servers.serverfomo import FedFomo
-from flcore.servers.serveramp import FedAMP
-from flcore.servers.servermtl import FedMTL
 from flcore.servers.serverlocal import Local
 from flcore.servers.serverper import FedPer
-from flcore.servers.serverapfl import APFL
-from flcore.servers.serverditto import Ditto
-from flcore.servers.serverrep import FedRep
-from flcore.servers.serverphp import FedPHP
-from flcore.servers.serverbn import FedBN
-from flcore.servers.serverrod import FedROD
-from flcore.servers.serverproto import FedProto
-from flcore.servers.serverdyn import FedDyn
-from flcore.servers.servermoon import MOON
-from flcore.servers.serverbabu import FedBABU
-from flcore.servers.serverapple import APPLE
-from flcore.servers.servergen import FedGen
-from flcore.servers.serverscaffold import SCAFFOLD
-from flcore.servers.serverdistill import FedDistill
-from flcore.servers.serverala import FedALA
-from flcore.servers.serverpac import FedPAC
-from flcore.servers.serverlg import LG_FedAvg
-from flcore.servers.servergc import FedGC
-from flcore.servers.serverfml import FML
-from flcore.servers.serverkd import FedKD
-from flcore.servers.serverpcl import FedPCL
-from flcore.servers.servercp import FedCP
-from flcore.servers.servergpfl import GPFL
-from flcore.servers.serverntd import FedNTD
-from flcore.servers.servergh import FedGH
-from flcore.servers.serveravgDBE import FedAvgDBE
-
 from flcore.trainmodel.models import *
-
 from flcore.trainmodel.bilstm import *
 from flcore.trainmodel.resnet import *
 from flcore.trainmodel.alexnet import *
 from flcore.trainmodel.mobilenet_v2 import *
 from flcore.trainmodel.transformer import *
-
 from utils.result_utils import average_data
 from utils.mem_utils import MemReporter
 
@@ -81,8 +29,8 @@ torch.manual_seed(0)
 
 # hyper-params for Text tasks
 vocab_size = 98635
-max_len=200
-emb_dim=32
+max_len = 200
+emb_dim = 32
 
 def run(args):
 
@@ -96,7 +44,7 @@ def run(args):
         start = time.time()
 
         # Generate args.model
-        if model_str == "mlr": # convex
+        if model_str == "mlr":  # convex
             if "mnist" in args.dataset:
                 args.model = Mclr_Logistic(1*28*28, num_classes=args.num_classes).to(args.device)
             elif "Cifar10" in args.dataset:
@@ -117,7 +65,7 @@ def run(args):
             else:
                 args.model = FedAvgCNN(in_features=3, num_classes=args.num_classes, dim=10816).to(args.device)
 
-        elif model_str == "dnn": # non-convex
+        elif model_str == "dnn":  # non-convex
             if "mnist" in args.dataset:
                 args.model = DNN(1*28*28, 100, num_classes=args.num_classes).to(args.device)
             elif "Cifar10" in args.dataset:
@@ -204,153 +152,14 @@ def run(args):
         elif args.algorithm == "Local":
             server = Local(args, i)
 
-        elif args.algorithm == "FedMTL":
-            server = FedMTL(args, i)
-
         elif args.algorithm == "PerAvg":
             server = PerAvg(args, i)
-
-        elif args.algorithm == "pFedMe":
-            server = pFedMe(args, i)
-
-        elif args.algorithm == "FedProx":
-            server = FedProx(args, i)
-
-        elif args.algorithm == "FedFomo":
-            server = FedFomo(args, i)
-
-        elif args.algorithm == "FedAMP":
-            server = FedAMP(args, i)
-
-        elif args.algorithm == "APFL":
-            server = APFL(args, i)
 
         elif args.algorithm == "FedPer":
             args.head = copy.deepcopy(args.model.fc)
             args.model.fc = nn.Identity()
             args.model = BaseHeadSplit(args.model, args.head)
             server = FedPer(args, i)
-
-        elif args.algorithm == "Ditto":
-            server = Ditto(args, i)
-
-        elif args.algorithm == "FedRep":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedRep(args, i)
-
-        elif args.algorithm == "FedPHP":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedPHP(args, i)
-
-        elif args.algorithm == "FedBN":
-            server = FedBN(args, i)
-
-        elif args.algorithm == "FedROD":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedROD(args, i)
-
-        elif args.algorithm == "FedProto":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedProto(args, i)
-
-        elif args.algorithm == "FedDyn":
-            server = FedDyn(args, i)
-
-        elif args.algorithm == "MOON":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = MOON(args, i)
-
-        elif args.algorithm == "FedBABU":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedBABU(args, i)
-
-        elif args.algorithm == "APPLE":
-            server = APPLE(args, i)
-
-        elif args.algorithm == "FedGen":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedGen(args, i)
-
-        elif args.algorithm == "SCAFFOLD":
-            server = SCAFFOLD(args, i)
-
-        elif args.algorithm == "FedDistill":
-            server = FedDistill(args, i)
-
-        elif args.algorithm == "FedALA":
-            server = FedALA(args, i)
-
-        elif args.algorithm == "FedPAC":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedPAC(args, i)
-
-        elif args.algorithm == "LG-FedAvg":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = LG_FedAvg(args, i)
-
-        elif args.algorithm == "FedGC":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedGC(args, i)
-
-        elif args.algorithm == "FML":
-            server = FML(args, i)
-
-        elif args.algorithm == "FedKD":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedKD(args, i)
-
-        elif args.algorithm == "FedPCL":
-            args.model.fc = nn.Identity()
-            server = FedPCL(args, i)
-
-        elif args.algorithm == "FedCP":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedCP(args, i)
-
-        elif args.algorithm == "GPFL":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = GPFL(args, i)
-
-        elif args.algorithm == "FedNTD":
-            server = FedNTD(args, i)
-
-        elif args.algorithm == "FedGH":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedGH(args, i)
-
-        elif args.algorithm == "FedAvgDBE":
-            args.head = copy.deepcopy(args.model.fc)
-            args.model.fc = nn.Identity()
-            args.model = BaseHeadSplit(args.model, args.head)
-            server = FedAvgDBE(args, i)
             
         else:
             raise NotImplementedError
@@ -371,14 +180,15 @@ def run(args):
 
 
 if __name__ == "__main__":
+
     total_start = time.time()
 
     parser = argparse.ArgumentParser()
     # general
     parser.add_argument('-go', "--goal", type=str, default="test", 
                         help="The goal for this experiment")
-    parser.add_argument('-dev', "--device", type=str, default="cuda",
-                        choices=["cpu", "cuda"])
+    parser.add_argument('-dev', "--device", type=str, default="cpu", choices=["cpu", "mps"])
+    parser.add_argument('--use_gpu', default=False, action='store_true')
     parser.add_argument('-did', "--device_id", type=str, default="0")
     parser.add_argument('-data', "--dataset", type=str, default="mnist")
     parser.add_argument('-nb', "--num_classes", type=int, default=10)
@@ -425,7 +235,7 @@ if __name__ == "__main__":
                         help="Whether to group and select clients at each round according to time cost")
     parser.add_argument('-tth', "--time_threthold", type=float, default=10000,
                         help="The threthold for droping slow clients")
-    # pFedMe / PerAvg / FedProx / FedAMP / FedPHP / GPFL
+    # PerAvg
     parser.add_argument('-bt', "--beta", type=float, default=0.0)
     parser.add_argument('-lam', "--lamda", type=float, default=1.0,
                         help="Regularization weight")
@@ -434,56 +244,11 @@ if __name__ == "__main__":
                         help="Number of personalized training steps for pFedMe")
     parser.add_argument('-lrp', "--p_learning_rate", type=float, default=0.01,
                         help="personalized learning rate to caculate theta aproximately using K steps")
-    # FedFomo
-    parser.add_argument('-M', "--M", type=int, default=5,
-                        help="Server only sends M client models to one client at each round")
-    # FedMTL
-    parser.add_argument('-itk', "--itk", type=int, default=4000,
-                        help="The iterations for solving quadratic subproblems")
-    # FedAMP
-    parser.add_argument('-alk', "--alphaK", type=float, default=1.0, 
-                        help="lambda/sqrt(GLOABL-ITRATION) according to the paper")
-    parser.add_argument('-sg', "--sigma", type=float, default=1.0)
-    # APFL
-    parser.add_argument('-al', "--alpha", type=float, default=1.0)
-    # Ditto / FedRep
-    parser.add_argument('-pls', "--plocal_epochs", type=int, default=1)
-    # MOON
-    parser.add_argument('-tau', "--tau", type=float, default=1.0)
-    # FedBABU
-    parser.add_argument('-fte', "--fine_tuning_epochs", type=int, default=10)
-    # APPLE
-    parser.add_argument('-dlr', "--dr_learning_rate", type=float, default=0.0)
-    parser.add_argument('-L', "--L", type=float, default=1.0)
-    # FedGen
-    parser.add_argument('-nd', "--noise_dim", type=int, default=512)
-    parser.add_argument('-glr', "--generator_learning_rate", type=float, default=0.005)
-    parser.add_argument('-hd', "--hidden_dim", type=int, default=512)
-    parser.add_argument('-se', "--server_epochs", type=int, default=1000)
-    parser.add_argument('-lf', "--localize_feature_extractor", type=bool, default=False)
-    # SCAFFOLD / FedGH
-    parser.add_argument('-slr', "--server_learning_rate", type=float, default=1.0)
-    # FedALA
-    parser.add_argument('-et', "--eta", type=float, default=1.0)
-    parser.add_argument('-s', "--rand_percent", type=int, default=80)
-    parser.add_argument('-p', "--layer_idx", type=int, default=2,
-                        help="More fine-graind than its original paper.")
-    # FedKD
-    parser.add_argument('-mlr', "--mentee_learning_rate", type=float, default=0.005)
-    parser.add_argument('-Ts', "--T_start", type=float, default=0.95)
-    parser.add_argument('-Te', "--T_end", type=float, default=0.98)
-    # FedAvgDBE
-    parser.add_argument('-mo', "--momentum", type=float, default=0.1)
-    parser.add_argument('-klw', "--kl_weight", type=float, default=0.0)
-
 
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_id
-
-    if args.device == "cuda" and not torch.cuda.is_available():
-        print("\ncuda is not avaiable.\n")
-        args.device = "cpu"
+    # args.use_gpu = True
+    args.device = torch.device("mps" if args.use_gpu else "cpu")
 
     print("=" * 50)
 
@@ -512,8 +277,6 @@ if __name__ == "__main__":
     print("Auto break: {}".format(args.auto_break))
     if not args.auto_break:
         print("Global rounds: {}".format(args.global_rounds))
-    if args.device == "cuda":
-        print("Cuda device id: {}".format(os.environ["CUDA_VISIBLE_DEVICES"]))
     print("DLG attack: {}".format(args.dlg_eval))
     if args.dlg_eval:
         print("DLG attack round gap: {}".format(args.dlg_gap))
