@@ -15,12 +15,12 @@ class clientPerAvg(Client):
 
         self.optimizer = PerAvgOptimizer(self.model.parameters(), lr=self.learning_rate)
         self.learning_rate_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer=self.optimizer, 
+            optimizer=self.optimizer,
             gamma=args.learning_rate_decay_gamma
         )
 
     def train(self):
-        trainloader = self.load_train_data(self.batch_size*2)
+        trainloader = self.load_train_data(self.batch_size * 2)
         start_time = time.time()
 
         # self.model.to(self.device)
@@ -79,7 +79,6 @@ class clientPerAvg(Client):
         self.train_time_cost['num_rounds'] += 1
         self.train_time_cost['total_cost'] += time.time() - start_time
 
-
     def train_one_step(self):
         trainloader = self.load_train_data(self.batch_size)
         iter_loader = iter(trainloader)
@@ -100,10 +99,9 @@ class clientPerAvg(Client):
 
         # self.model.cpu()
 
-
     def train_metrics(self, model=None):
-        trainloader = self.load_train_data(self.batch_size*2)
-        if model == None:
+        trainloader = self.load_train_data(self.batch_size * 2)
+        if model is None:
             model = self.model
         model.eval()
 

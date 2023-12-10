@@ -7,10 +7,11 @@ from utils.privacy import *
 
 
 class clientAVG(Client):
-    def __init__(self, args, id, train_samples, test_samples, **kwargs):
-        super().__init__(args, id, train_samples, test_samples, **kwargs)
+    def __init__(self, args, id, train_samples, **kwargs):
+        super().__init__(args, id, train_samples, **kwargs)
 
     def train(self):
+        global privacy_engine, model_origin
         trainloader = self.load_train_data()
         # self.model.to(self.device)
         self.model.train()
@@ -20,7 +21,7 @@ class clientAVG(Client):
             model_origin = copy.deepcopy(self.model)
             self.model, self.optimizer, trainloader, privacy_engine = \
                 initialize_dp(self.model, self.optimizer, trainloader, self.dp_sigma)
-        
+
         start_time = time.time()
 
         max_local_epochs = self.local_epochs

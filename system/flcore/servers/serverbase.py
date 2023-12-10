@@ -6,6 +6,9 @@ import copy
 import time
 import random
 from utils.data_utils import read_client_data
+from torch.utils.data import DataLoader
+from sklearn.preprocessing import label_binarize
+from sklearn import metrics
 from utils.dlg import DLG
 
 
@@ -65,11 +68,10 @@ class Server(object):
     def set_clients(self, clientObj):
         for i, train_slow, send_slow in zip(range(self.num_clients), self.train_slow_clients, self.send_slow_clients):
             train_data = read_client_data(self.dataset, i, is_train=True)
-            test_data = read_client_data(self.dataset, i, is_train=False)
+            # test_data = read_client_data(self.dataset, i, is_train=False)
             client = clientObj(self.args,
                                id=i,
                                train_samples=len(train_data),
-                               test_samples=len(test_data),
                                train_slow=train_slow,
                                send_slow=send_slow)
             self.clients.append(client)
@@ -156,11 +158,11 @@ class Server(object):
         model_path = os.path.join(model_path, self.algorithm + "_server" + ".pt")
         torch.save(self.global_model, model_path)
 
-    def load_model(self):
-        model_path = os.path.join("models", self.dataset)
-        model_path = os.path.join(model_path, self.algorithm + "_server" + ".pt")
-        assert (os.path.exists(model_path))
-        self.global_model = torch.load(model_path)
+    def load_test_data(self, batch_size=None):
+        if batch_size is None:
+            batch_size = self.batch_size
+        test_data = read_client_data(self.dataset, 0, is_train=False)
+        return DataLoader(test_data, batch_size, drop_last=False, shuffle=True)
 
     def model_exists(self):
         model_path = os.path.join("models", self.dataset)
@@ -191,23 +193,66 @@ class Server(object):
     def load_item(self, item_name):
         return torch.load(os.path.join(self.save_folder_name, "server_" + item_name + ".pt"))
 
+    # def test_metrics(self):
+    #     if self.eval_new_clients and self.num_new_clients > 0:
+    #         self.fine_tuning_new_clients()
+    #         return self.test_metrics_new_clients()
+    #
+    #     num_samples = []
+    #     tot_correct = []
+    #     tot_auc = []
+    #     for c in self.clients:
+    #         ct, ns, auc = c.test_metrics()
+    #         tot_correct.append(ct * 1.0)
+    #         tot_auc.append(auc * ns)
+    #         num_samples.append(ns)
+    #
+    #     ids = [c.id for c in self.clients]
+    #
+    #     return ids, num_samples, tot_correct, tot_auc
+
     def test_metrics(self):
-        if self.eval_new_clients and self.num_new_clients > 0:
-            self.fine_tuning_new_clients()
-            return self.test_metrics_new_clients()
 
-        num_samples = []
-        tot_correct = []
-        tot_auc = []
-        for c in self.clients:
-            ct, ns, auc = c.test_metrics()
-            tot_correct.append(ct * 1.0)
-            tot_auc.append(auc * ns)
-            num_samples.append(ns)
+        testloaderfull = self.load_test_data()
+        # self.model = self.load_model('model')
+        # self.model.to(self.device)
+        self.global_model.eval()
 
-        ids = [c.id for c in self.clients]
+        test_acc = 0
+        test_num = 0
+        y_prob = []
+        y_true = []
 
-        return ids, num_samples, tot_correct, tot_auc
+        with torch.no_grad():
+            for x, y in testloaderfull:
+                if type(x) == type([]):
+                    x[0] = x[0].to(self.device)
+                else:
+                    x = x.to(self.device)
+                y = y.to(self.device)
+                output = self.global_model(x)
+
+                test_acc += (torch.sum(torch.argmax(output, dim=1) == y)).item()
+                test_num += y.shape[0]
+
+                y_prob.append(output.detach().cpu().numpy())
+                nc = self.num_classes
+                if self.num_classes == 2:
+                    nc += 1
+                lb = label_binarize(y.detach().cpu().numpy(), classes=np.arange(nc))
+                if self.num_classes == 2:
+                    lb = lb[:, :2]
+                y_true.append(lb)
+
+        # self.model.cpu()
+        # self.save_model(self.model, 'model')
+
+        y_prob = np.concatenate(y_prob, axis=0)
+        y_true = np.concatenate(y_true, axis=0)
+
+        auc = metrics.roc_auc_score(y_true, y_prob, average='micro')
+
+        return test_num, test_acc, auc
 
     def train_metrics(self):
         if self.eval_new_clients and self.num_new_clients > 0:
@@ -225,15 +270,41 @@ class Server(object):
         return ids, num_samples, losses
 
     # evaluate selected clients
+    # def evaluate(self, acc=None, loss=None):
+    #
+    #     stats = self.test_metrics()
+    #     stats_train = self.train_metrics()
+    #
+    #     test_acc = sum(stats[2]) * 1.0 / sum(stats[1])
+    #     test_auc = sum(stats[3]) * 1.0 / sum(stats[1])
+    #     train_loss = sum(stats_train[2]) * 1.0 / sum(stats_train[1])
+    #     accs = [a / n for a, n in zip(stats[2], stats[1])]
+    #     aucs = [a / n for a, n in zip(stats[3], stats[1])]
+    #
+    #     if acc is None:
+    #         self.rs_test_acc.append(test_acc)
+    #     else:
+    #         acc.append(test_acc)
+    #
+    #     if loss is None:
+    #         self.rs_train_loss.append(train_loss)
+    #     else:
+    #         loss.append(train_loss)
+    #
+    #     print("Averaged Train Loss: {:.4f}".format(train_loss))
+    #     print("Averaged Test Accuracy: {:.4f}".format(test_acc))
+    #     print("Averaged Test AUC: {:.4f}".format(test_auc))
+    #     # self.print_(test_acc, train_acc, train_loss)
+    #     print("Std Test Accuracy: {:.4f}".format(np.std(accs)))
+    #     print("Std Test AUC: {:.4f}".format(np.std(aucs)))
+
     def evaluate(self, acc=None, loss=None):
+
         stats = self.test_metrics()
         stats_train = self.train_metrics()
 
-        test_acc = sum(stats[2]) * 1.0 / sum(stats[1])
-        test_auc = sum(stats[3]) * 1.0 / sum(stats[1])
+        test_acc = stats[1] * 1.0 / stats[0]
         train_loss = sum(stats_train[2]) * 1.0 / sum(stats_train[1])
-        accs = [a / n for a, n in zip(stats[2], stats[1])]
-        aucs = [a / n for a, n in zip(stats[3], stats[1])]
 
         if acc is None:
             self.rs_test_acc.append(test_acc)
@@ -245,17 +316,11 @@ class Server(object):
         else:
             loss.append(train_loss)
 
-        print("Averaged Train Loss: {:.4f}".format(train_loss))
-        print("Averaged Test Accuracy: {:.4f}".format(test_acc))
-        print("Averaged Test AUC: {:.4f}".format(test_auc))
-        # self.print_(test_acc, train_acc, train_loss)
-        print("Std Test Accuracy: {:.4f}".format(np.std(accs)))
-        print("Std Test AUC: {:.4f}".format(np.std(aucs)))
+        self.print_(train_loss, test_acc)
 
-    def print_(self, test_acc, test_auc, train_loss):
-        print("Average Test Accuracy: {:.4f}".format(test_acc))
-        print("Average Test AUC: {:.4f}".format(test_auc))
-        print("Average Train Loss: {:.4f}".format(train_loss))
+    def print_(self, train_loss, test_acc):
+        print("Train Loss: {:.4f}".format(train_loss))
+        print("Test Accuracy: {:.4f}".format(test_acc))
 
     def check_done(self, acc_lss, top_cnt=None, div_value=None):
         for acc_ls in acc_lss:

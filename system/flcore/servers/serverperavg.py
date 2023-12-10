@@ -19,13 +19,13 @@ class PerAvg(Server):
         self.Budget = []
 
     def train(self):
-        for i in range(self.global_rounds+1):
+        for i in range(self.global_rounds + 1):
             s_t = time.time()
             self.selected_clients = self.select_clients()
             # send all parameter for clients
             self.send_models()
 
-            if i%self.eval_gap == 0:
+            if i % self.eval_gap == 0:
                 print(f"\n-------------Round number: {i}-------------")
                 print("\nEvaluate global model with one step update")
                 self.evaluate_one_step()
@@ -41,12 +41,12 @@ class PerAvg(Server):
             # [t.join() for t in threads]
 
             self.receive_models()
-            if self.dlg_eval and i%self.dlg_gap == 0:
+            if self.dlg_eval and i % self.dlg_gap == 0:
                 self.call_dlg(i)
             self.aggregate_parameters()
 
             self.Budget.append(time.time() - s_t)
-            print('-'*25, 'time cost', '-'*25, self.Budget[-1])
+            print('-' * 25, 'time cost', '-' * 25, self.Budget[-1])
 
             if self.auto_break and self.check_done(acc_lss=[self.rs_test_acc], top_cnt=self.top_cnt):
                 break
@@ -56,7 +56,7 @@ class PerAvg(Server):
         #     self.rs_train_acc), min(self.rs_train_loss))
         print(max(self.rs_test_acc))
         print("\nAverage time cost per round.")
-        print(sum(self.Budget[1:])/len(self.Budget[1:]))
+        print(sum(self.Budget[1:]) / len(self.Budget[1:]))
 
         self.save_results()
 
@@ -67,7 +67,6 @@ class PerAvg(Server):
             print("\nEvaluate new clients")
             self.evaluate()
 
-
     def evaluate_one_step(self, acc=None, loss=None):
         models_temp = []
         for c in self.clients:
@@ -77,7 +76,7 @@ class PerAvg(Server):
         # set the local model back on clients for training process
         for i, c in enumerate(self.clients):
             c.clone_model(models_temp[i], c.model)
-            
+
         stats_train = self.train_metrics()
         # set the local model back on clients for training process
         for i, c in enumerate(self.clients):
@@ -85,15 +84,15 @@ class PerAvg(Server):
 
         accs = [a / n for a, n in zip(stats[2], stats[1])]
 
-        test_acc = sum(stats[2])*1.0 / sum(stats[1])
-        train_loss = sum(stats_train[2])*1.0 / sum(stats_train[1])
-        
-        if acc == None:
+        test_acc = sum(stats[2]) * 1.0 / sum(stats[1])
+        train_loss = sum(stats_train[2]) * 1.0 / sum(stats_train[1])
+
+        if acc is None:
             self.rs_test_acc.append(test_acc)
         else:
             acc.append(test_acc)
-        
-        if loss == None:
+
+        if loss is None:
             self.rs_train_loss.append(train_loss)
         else:
             loss.append(train_loss)
