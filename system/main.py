@@ -255,6 +255,7 @@ if __name__ == "__main__":
 
     # args.use_gpu = True
     args.device = torch.device("mps" if args.use_gpu else "cpu")
+    args.batch_size = 64
 
     print("=" * 50)
 
