@@ -32,6 +32,6 @@ def read_data_then_delete(file_name, delete=False):
 
     if delete:
         os.remove(file_path)
-    print("Length: ", len(rs_test_acc))
+    # print("Length: ", len(rs_test_acc))
 
     return rs_test_acc
