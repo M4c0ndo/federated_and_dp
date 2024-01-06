@@ -1,11 +1,14 @@
+#!/user/bin/python
+# author jeff
 import numpy as np
 import math
 from scipy import special
-from system.flcore.privacy_analysis.RDP.rdp_convert_dp import compute_eps
+
+from privacy_analysis.RDP.rdp_convert_dp import compute_eps
 
 
 def compute_rdp(q, noise_multiplier, steps, orders):
-    """Computes RDP of the Sampled Gaussian Mechanism.
+  """Computes RDP of the Sampled Gaussian Mechanism.
   Args:
     q: The sampling rate.
     noise_multiplier: The ratio of the standard deviation of the Gaussian noise    STD标准差，敏感度应该包含在这里面了
@@ -15,16 +18,15 @@ def compute_rdp(q, noise_multiplier, steps, orders):
   Returns:
     The RDPs at all orders. Can be `np.inf`.
   """
-    if np.isscalar(orders):  # 判断orders是不是标量类型，判断是否为一个数字还是一组list，只有一个数字走这个
-        rdp = _compute_rdp(q, noise_multiplier, orders)  # 这里是具体计算采样下的RDP隐私损失的
-    else:  # 如果是一个list，走的是这个函数，一般走这个
-        rdp = np.array(
-            [_compute_rdp(q, noise_multiplier, order) for order in orders])
+  if np.isscalar(orders):        #判断orders是不是标量类型，判断是否为一个数字还是一组list，只有一个数字走这个
+    rdp = _compute_rdp(q, noise_multiplier, orders)     #这里是具体计算采样下的RDP隐私损失的
+  else:                       #如果是一个list，走的是这个函数，一般走这个
+    rdp = np.array(
+        [ _compute_rdp(q, noise_multiplier, order) for order in orders])
 
-    return rdp * steps  # 这里直接乘以总的迭代次数即可
+  return rdp * steps     #这里直接乘以总的迭代次数即可
 
-
-# 整型
+#整型
 def _compute_log_a_for_int_alpha(q, sigma, alpha):
     assert isinstance(alpha, int)
     rdp = -np.inf
@@ -37,8 +39,7 @@ def _compute_log_a_for_int_alpha(q, sigma, alpha):
                 + (i * i - i) / (2 * (sigma ** 2))
         )
 
-        # rdp=math.exp(log_b)+math.exp(rdp)
-        # 当加到后面，math.exp计算的数字以小数表示，超过110000位数。超出了Double的范围，会导致溢出。所以我们用下面的方法
+        # rdp=math.exp(log_b)+math.exp(rdp)           # 当加到后面，math.exp计算的数字以小数表示，超过110000位数。超出了Double的范围，会导致溢出。所以我们用下面的方法
 
         # 这边其实和上面我注释的等价，这里做了一些数值超出范围的处理
         a, b = min(rdp, log_b), max(rdp, log_b)
@@ -96,7 +97,6 @@ def _log_sub(logx: float, logy: float) -> float:
     except OverflowError:
         return logx
 
-
 def _log_erfc(x: float) -> float:
     r"""Computes :math:`log(erfc(x))` with high accuracy for large ``x``.
 
@@ -110,7 +110,6 @@ def _log_erfc(x: float) -> float:
         :math:`log(erfc(x))`
     """
     return math.log(2) + special.log_ndtr(-x * 2 ** 0.5)
-
 
 def _compute_log_a_for_frac_alpha(q: float, sigma: float, alpha: float) -> float:
     r"""Computes :math:`log(A_\alpha)` for fractional ``alpha``.
@@ -189,39 +188,33 @@ def _compute_rdp(q, sigma, alpha):
     if sigma == 0:
         return np.inf
 
-    # q=1时相当于没有抽样，这里大家会质疑为什么没有处以（alpha-1）,其实该系数已经被消掉了(see proposition 7 of https://arxiv.org/pdf/1702.07476.pdf 1)
+    #q=1时相当于没有抽样，这里大家会质疑为什么没有处以（alpha-1）,其实该系数已经被消掉了(see proposition 7 of https://arxiv.org/pdf/1702.07476.pdf 1)
     if q == 1.:  # 相当于没有抽样
-        return alpha / (
-                    2 * sigma ** 2)  # 没有抽样下参照RDP两个高斯的瑞丽分布，应该是 alpha*s  / (2 * sigma**2),这边为什么少了一个敏感度S，是默认函数敏感度为1吗，答案是敏感度和抵消了，这边的sigma里面没有敏感度的
+        return alpha  / (2 * sigma ** 2)  # 没有抽样下参照RDP两个高斯的瑞丽分布，应该是 alpha*s  / (2 * sigma**2),这边为什么少了一个敏感度S，是默认函数敏感度为1吗，答案是敏感度和抵消了，这边的sigma里面没有敏感度的
 
     if np.isinf(alpha):
         return np.inf
 
-    if float(alpha).is_integer():  # 整型
+    if float(alpha).is_integer(): #整型
         return _compute_log_a_for_int_alpha(q, sigma, int(alpha))
-    else:  # 浮点型
+    else:  #浮点型
         return _compute_log_a_for_frac_alpha(q, sigma, alpha)
 
+#[renyi differential privacy,2017,Proposition 5] 随机扰动没有抽样的
+#这里的入参就算扰动概率，和一组alpha，steps默认为1
+def compute_rdp_randomized_response(p,steps,orders,q):
 
-# [renyi differential privacy,2017,Proposition 5] 随机扰动没有抽样的
-# 这里的入参就算扰动概率，和一组alpha，steps默认为1
-def compute_rdp_randomized_response(p, steps, orders, q):
     if np.isscalar(orders):  # 判断orders是不是标量类型，判断是否为一个数字还是一组list，只有一个数字走这个
         rdp = _compute_rdp_randomized_response(p, orders)  # 这里是具体计算采样下的RDP隐私损失的
     else:  # 如果是一个list，走的是这个函数，一般走这个
         rdp = np.array([_compute_rdp_randomized_response(p, order) for order in orders])
 
-    return q * rdp * steps  # 这里直接乘以总的迭代次数即可
+    return q*rdp * steps  # 这里直接乘以总的迭代次数即可
 
-
-def _compute_rdp_randomized_response(p, alpha):
-    item1 = float((p ** alpha) * ((1 - p) ** (1 - alpha)))
-    # print("item1:",item1)
-    item2 = float(((1 - p) ** alpha) * (p ** (1 - alpha)))
-    # print("item2:",item2)
-    #  print("a:",alpha)
-    # print("item1+item2:",item1+item2)
-    rdp = float(math.log(item1 + item2)) / (alpha - 1)
+def _compute_rdp_randomized_response(p,alpha):
+    item1 = float((p**alpha)*((1-p)**(1-alpha)))
+    item2 = float(((1-p)**alpha)*(p**(1-alpha)))
+    rdp = float(math.log(item1+item2))/ (alpha-1)
     return rdp
 
 
@@ -229,7 +222,7 @@ if __name__ == '__main__':
     ORDERS = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 128))
     p = 0.7
     steps = 100
-    q = 3000 / 60000
+    q = 3000/60000
     delta = 1e-5
     rdp = compute_rdp_randomized_response(p, steps, ORDERS, q)
     dp, ord = compute_eps(ORDERS, rdp, delta)

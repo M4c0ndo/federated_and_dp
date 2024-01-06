@@ -9,9 +9,8 @@ import numpy as np
 import torchvision
 import logging
 from flcore.servers.serveravg import FedAvg
-from flcore.servers.serverperavg import PerAvg
-from flcore.servers.serverlocal import Local
-from flcore.servers.serverper import FedPer
+from flcore.servers.servercdpavg import CDPFedAvg
+from flcore.servers.serverdpavg import DPFedAvg
 from flcore.trainmodel.models import *
 from flcore.trainmodel.bilstm import *
 from flcore.trainmodel.resnet import *
@@ -155,19 +154,16 @@ def run(args):
             args.model.fc = nn.Identity()
             args.model = BaseHeadSplit(args.model, args.head)
             server = FedAvg(args, i)
-
-        elif args.algorithm == "Local":
-            server = Local(args, i)
-
-        elif args.algorithm == "PerAvg":
-            server = PerAvg(args, i)
-
-        elif args.algorithm == "FedPer":
+        elif args.algorithm == "DPFedAvg":
             args.head = copy.deepcopy(args.model.fc)
             args.model.fc = nn.Identity()
             args.model = BaseHeadSplit(args.model, args.head)
-            server = FedPer(args, i)
-
+            server = DPFedAvg(args, i)
+        elif args.algorithm == "CDPFedAvg":
+            args.head = copy.deepcopy(args.model.fc)
+            args.model.fc = nn.Identity()
+            args.model = BaseHeadSplit(args.model, args.head)
+            server = CDPFedAvg(args, i)
         else:
             raise NotImplementedError
 
@@ -200,7 +196,8 @@ if __name__ == "__main__":
     parser.add_argument('-nb', "--num_classes", type=int, default=10)
     parser.add_argument('-m', "--model", type=str, default="cnn")
     parser.add_argument('-lbs', "--batch_size", type=int, default=10)
-    parser.add_argument('-lr', "--local_learning_rate", type=float, default=0.005,
+    parser.add_argument('-mbs', "--micro_batch_size", type=int, default=1)
+    parser.add_argument('-lr', "--local_learning_rate", type=float, default=0.002,
                         help="Local learning rate")
     parser.add_argument('-ld', "--learning_rate_decay", type=bool, default=False)
     parser.add_argument('-ldg', "--learning_rate_decay_gamma", type=float, default=0.99)
@@ -222,7 +219,10 @@ if __name__ == "__main__":
                         help="Rounds gap for evaluation")
     parser.add_argument('-dp', "--privacy", type=bool, default=False,
                         help="differential privacy")
-    parser.add_argument('-dps', "--dp_sigma", type=float, default=0.0)
+    parser.add_argument('-dps', "--sigma", type=float, default=1.1)
+    parser.add_argument('-nscale', "--noise_scale", type=float, default=1)
+    parser.add_argument('-l2n', "--l2_norm", type=float, default=4)
+    parser.add_argument('-dla', "--delta", type=float, default=1e-5)
     parser.add_argument('-sfn', "--save_folder_name", type=str, default='items')
     parser.add_argument('-ab', "--auto_break", type=bool, default=False)
     parser.add_argument('-dlg', "--dlg_eval", type=bool, default=False)
@@ -256,6 +256,14 @@ if __name__ == "__main__":
     # args.use_gpu = True
     args.device = torch.device("mps" if args.use_gpu else "cpu")
     args.batch_size = 64
+    # args.algorithm = "DPFedAvg"
+    args.algorithm = "CDPFedAvg"
+    # args.algorithm = "FedAvg"
+    args.global_rounds = 100
+    args.privacy = False
+    args.num_clients = 10
+    args.noise_scale = 1.5
+    args.l2_norm = 4
 
     print("=" * 50)
 
@@ -280,7 +288,8 @@ if __name__ == "__main__":
     print("Using device: {}".format(args.device))
     print("Using DP: {}".format(args.privacy))
     if args.privacy:
-        print("Sigma for DP: {}".format(args.dp_sigma))
+        print("Sigma for DP: {}".format(args.sigma))
+        print("Clip_norm for DP: {}".format(args.l2_norm))
     print("Auto break: {}".format(args.auto_break))
     if not args.auto_break:
         print("Global rounds: {}".format(args.global_rounds))

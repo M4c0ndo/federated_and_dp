@@ -38,6 +38,7 @@ class Client(object):
         self.batch_size = args.batch_size
         self.learning_rate = args.local_learning_rate
         self.local_epochs = args.local_epochs
+        self.l2_norm = args.l2_norm
 
         # check BatchNorm
         self.has_BatchNorm = False
@@ -52,7 +53,7 @@ class Client(object):
         self.send_time_cost = {'num_rounds': 0, 'total_cost': 0.0}
 
         self.privacy = args.privacy
-        self.dp_sigma = args.dp_sigma
+        self.sigma = args.sigma
 
         self.loss = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate)

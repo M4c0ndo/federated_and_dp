@@ -319,7 +319,7 @@ class Server(object):
         self.print_(train_loss, test_acc)
 
     def print_(self, train_loss, test_acc):
-        print("Train Loss: {:.4f}".format(train_loss))
+        # print("Train Loss: {:.4f}".format(train_loss))
         print("Test Accuracy: {:.4f}".format(test_acc))
 
     def check_done(self, acc_lss, top_cnt=None, div_value=None):

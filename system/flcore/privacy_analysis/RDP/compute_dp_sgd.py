@@ -1,5 +1,4 @@
 #!/user/bin/python
-# author jeff
 import math
 # from absl import app
 # 整个DP-SGD的隐私分析，要从这个开始函数调用。整体来看，隐私分析和数据不需要绑定，输入对应参数即可获得，
